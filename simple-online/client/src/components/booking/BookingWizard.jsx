@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getServicios, getAbogados, checkDisponibilidad, createAgendamiento } from '../../utils/api';
-import { X, CheckCircle, Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronRight, ChevronLeft, Scale, Ban } from 'lucide-react';
+import { X, Check, CheckCircle, Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronRight, ChevronLeft, Scale, Ban, AlertCircle } from 'lucide-react';
 
 const BookingWizard = ({ onClose }) => {
     const [step, setStep] = useState(1);
@@ -14,12 +14,116 @@ const BookingWizard = ({ onClose }) => {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState('');
+    const [bloqueos, setBloqueos] = useState([]);
     const [formData, setFormData] = useState({
         nombre: '',
         email: '',
-        telefono: '',
+        telefono: '+56 ',
         comentarios: ''
     });
+    const [formErrors, setFormErrors] = useState({
+        nombre: '',
+        email: '',
+        telefono: ''
+    });
+
+    // Validaciones
+    const validateNombre = (nombre) => {
+        if (!nombre.trim()) {
+            return 'El nombre es obligatorio';
+        }
+        if (nombre.trim().length < 3) {
+            return 'El nombre debe tener al menos 3 caracteres';
+        }
+        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(nombre)) {
+            return 'El nombre solo puede contener letras';
+        }
+        return '';
+    };
+
+    const validateEmail = (email) => {
+        if (!email.trim()) {
+            return 'El email es obligatorio';
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return 'Ingresa un email válido';
+        }
+        return '';
+    };
+
+    const validateTelefono = (telefono) => {
+        if (!telefono.trim() || telefono.trim() === '+56') {
+            return 'El teléfono es obligatorio';
+        }
+
+        // Remover espacios, guiones y el símbolo +
+        const telefonoLimpio = telefono.replace(/[\s\-+]/g, '');
+
+        // Debe ser exactamente 11 dígitos: 56 + 9 dígitos (ej: 56912345678)
+        if (!/^56\d{9}$/.test(telefonoLimpio)) {
+            return 'Formato válido: +56 9 1234 5678 (9 dígitos después del +56)';
+        }
+
+        // Verificar que después del 56 venga un 9 (celulares chilenos)
+        if (!telefonoLimpio.startsWith('569')) {
+            return 'Los celulares chilenos comienzan con 9';
+        }
+
+        return '';
+    };
+
+    const handleNombreChange = (value) => {
+        setFormData({ ...formData, nombre: value });
+        setFormErrors({ ...formErrors, nombre: '' });
+    };
+
+    const handleEmailChange = (value) => {
+        setFormData({ ...formData, email: value });
+        setFormErrors({ ...formErrors, email: '' });
+    };
+
+    const handleTelefonoChange = (value) => {
+        // Si el usuario intenta borrar el prefijo, lo mantenemos
+        if (!value.startsWith('+56 ')) {
+            value = '+56 ';
+        }
+
+        // Obtener solo los dígitos después de +56
+        const digitosUnicamente = value.substring(4).replace(/\D/g, '');
+
+        // Limitar a 9 dígitos
+        const digitosLimitados = digitosUnicamente.substring(0, 9);
+
+        // Formatear: +56 9 1234 5678
+        let telefonoFormateado = '+56 ';
+        if (digitosLimitados.length > 0) {
+            telefonoFormateado += digitosLimitados[0]; // primer dígito (9)
+            if (digitosLimitados.length > 1) {
+                telefonoFormateado += ' ' + digitosLimitados.substring(1, 5); // siguientes 4
+                if (digitosLimitados.length > 5) {
+                    telefonoFormateado += ' ' + digitosLimitados.substring(5, 9); // últimos 4
+                }
+            }
+        }
+
+        setFormData({ ...formData, telefono: telefonoFormateado });
+        setFormErrors({ ...formErrors, telefono: '' });
+    };
+
+    const validateForm = () => {
+        const nombreError = validateNombre(formData.nombre);
+        const emailError = validateEmail(formData.email);
+        const telefonoError = validateTelefono(formData.telefono);
+
+        setFormErrors({
+            nombre: nombreError,
+            email: emailError,
+            telefono: telefonoError
+        });
+
+        return !nombreError && !emailError && !telefonoError;
+    };
 
     // Cargar servicios y abogados
     useEffect(() => {
@@ -49,20 +153,49 @@ const BookingWizard = ({ onClose }) => {
     const fetchDisponibilidad = async () => {
         try {
             const response = await checkDisponibilidad(selectedAbogado.id, selectedDate);
-            setHorasOcupadas(response.data.horasOcupadas);
+            setHorasOcupadas(response.data.horasOcupadas || []);
+            setBloqueos(response.data.bloqueos || []);
         } catch (error) {
             console.error('Error al verificar disponibilidad:', error);
         }
     };
 
-    // Función para generar horarios según el día de la semana
+    const isFechaBloqueada = () => {
+        if (!selectedDate || bloqueos.length === 0) return false;
+
+        return bloqueos.some(bloqueo => {
+            const fechaBloqueo = bloqueo.fecha_inicio.split('T')[0];
+            return fechaBloqueo === selectedDate && bloqueo.tipo === 'dia_completo';
+        });
+    };
+
+    const isHoraBloqueada = (horario) => {
+        if (bloqueos.length === 0) return false;
+
+        const horaInicio = horario.split(' - ')[0];
+
+        return bloqueos.some(bloqueo => {
+            const fechaBloqueo = bloqueo.fecha_inicio.split('T')[0];
+            if (fechaBloqueo !== selectedDate) return false;
+
+            if (bloqueo.tipo === 'dia_completo') return true;
+
+            if (bloqueo.tipo === 'horas_especificas' && bloqueo.hora_inicio && bloqueo.hora_fin) {
+                const bloqInicio = bloqueo.hora_inicio.substring(0, 5);
+                const bloqFin = bloqueo.hora_fin.substring(0, 5);
+                return horaInicio >= bloqInicio && horaInicio < bloqFin;
+            }
+
+            return false;
+        });
+    };
+
     const getHorariosDisponibles = () => {
         if (!selectedDate) return [];
 
         const fecha = new Date(selectedDate + 'T00:00:00');
-        const diaSemana = fecha.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
+        const diaSemana = fecha.getDay();
 
-        // Sábado (día 6): 09:30 - 12:00
         if (diaSemana === 6) {
             return [
                 '09:30 - 10:00',
@@ -71,7 +204,6 @@ const BookingWizard = ({ onClose }) => {
             ];
         }
 
-        // Lunes a Viernes (días 1-5): 09:30 - 19:00
         if (diaSemana >= 1 && diaSemana <= 5) {
             return [
                 '09:30 - 10:00',
@@ -86,23 +218,22 @@ const BookingWizard = ({ onClose }) => {
                 '18:30 - 19:00'
             ];
         }
-
-        // Domingo: no hay atención
         return [];
     };
 
     const isHoraDisponible = (horario) => {
-        // Extraer solo la hora de inicio del bloque (ej: "09:30" de "09:30 - 10:00")
         const horaInicio = horario.split(' - ')[0];
 
-        // Verificar si esta hora está ocupada
-        return !horasOcupadas.some(h => {
+        const ocupada = horasOcupadas.some(h => {
             const horaOcupada = h.substring(0, 5);
             return horaOcupada === horaInicio;
         });
+
+        const bloqueada = isHoraBloqueada(horario);
+
+        return !ocupada && !bloqueada;
     };
 
-    // Función para formatear fecha chilena (dd-mm-yyyy)
     const formatearFechaChilena = (fecha) => {
         const date = new Date(fecha + 'T00:00:00');
         const dia = String(date.getDate()).padStart(2, '0');
@@ -111,7 +242,6 @@ const BookingWizard = ({ onClose }) => {
         return `${dia}-${mes}-${año}`;
     };
 
-    // Función para formatear precio chileno
     const formatearPrecioChileno = (precio) => {
         return new Intl.NumberFormat('es-CL', {
             style: 'currency',
@@ -129,22 +259,25 @@ const BookingWizard = ({ onClose }) => {
     };
 
     const handleSubmit = async () => {
+        if (!validateForm()) {
+            return;
+        }
+
         setLoading(true);
         setError('');
 
         try {
-            // Extraer solo la hora de inicio del bloque seleccionado
             const horaInicio = selectedTime.split(' - ')[0];
 
             const agendamientoData = {
                 servicio_id: selectedServicio.id,
                 abogado_id: selectedAbogado.id,
-                cliente_nombre: formData.nombre,
-                cliente_email: formData.email,
-                cliente_telefono: formData.telefono,
+                cliente_nombre: formData.nombre.trim(),
+                cliente_email: formData.email.trim().toLowerCase(),
+                cliente_telefono: formData.telefono.trim(),
                 fecha: selectedDate,
                 hora: horaInicio + ':00',
-                comentarios: formData.comentarios || null
+                comentarios: formData.comentarios.trim() || null
             };
 
             await createAgendamiento(agendamientoData);
@@ -162,20 +295,18 @@ const BookingWizard = ({ onClose }) => {
         }
     };
 
-    // Función para verificar si una fecha es válida (no domingo)
     const isFechaValida = (fecha) => {
         const date = new Date(fecha + 'T00:00:00');
         const diaSemana = date.getDay();
-        return diaSemana !== 0; // 0 = Domingo
+        return diaSemana !== 0;
     };
 
-    // Pantalla de éxito
     if (success) {
         return (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                 <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-12 text-center">
                     <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <CheckCircle className="w-12 h-12 text-white" />
+                        <Check className="w-12 h-12 text-white" />
                     </div>
                     <h3 className="text-2xl font-bold text-slate-900 mb-2">¡Cita Agendada!</h3>
                     <p className="text-slate-600 mb-4">
@@ -191,6 +322,7 @@ const BookingWizard = ({ onClose }) => {
     }
 
     const horarios = getHorariosDisponibles();
+    const fechaBloqueada = isFechaBloqueada();
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -220,7 +352,6 @@ const BookingWizard = ({ onClose }) => {
                         <h3 className="text-xl font-bold mb-2">Agenda tu Consulta</h3>
                         <p className="text-slate-200 text-sm mb-8">Completa los siguientes pasos</p>
 
-                        {/* Steps */}
                         <div className="space-y-6">
                             {[
                                 { num: 1, title: 'Selección del servicio', icon: <Calendar className="w-5 h-5" /> },
@@ -234,7 +365,7 @@ const BookingWizard = ({ onClose }) => {
                                             ? 'bg-olive-600 ring-4 ring-olive-600/0'
                                             : 'bg-black'
                                         }`}>
-                                        {step > num ? <CheckCircle className="w-5 h-5" /> : icon}
+                                        {step > num ? <Check className="w-5 h-5" /> : icon}
                                     </div>
                                     <div className="pt-1">
                                         <div className={`font-semibold text-sm ${step >= num ? 'text-white' : 'text-slate-400'}`}>
@@ -246,7 +377,6 @@ const BookingWizard = ({ onClose }) => {
                             ))}
                         </div>
 
-                        {/* Contact info */}
                         <div className="mt-12 pt-8 border-t border-slate-200">
                             <p className="text-xs text-slate-200 mb-3">¿Necesitas ayuda?</p>
                             <div className="space-y-2 text-sm">
@@ -265,7 +395,6 @@ const BookingWizard = ({ onClose }) => {
 
                 {/* Main Content */}
                 <div className="flex-1 flex flex-col">
-                    {/* Header */}
                     <div className="border-b border-slate-200 p-6 md:p-8 flex items-center justify-between">
                         <div>
                             <h2 className="text-2xl font-bold text-slate-900">
@@ -287,9 +416,7 @@ const BookingWizard = ({ onClose }) => {
                         </button>
                     </div>
 
-                    {/* Content Area */}
                     <div className="flex-1 overflow-y-auto p-6 md:p-8">
-                        {/* Error message */}
                         {error && (
                             <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
                                 <p className="text-red-700 text-sm">{error}</p>
@@ -352,7 +479,7 @@ const BookingWizard = ({ onClose }) => {
                                                     <p className="text-sm text-slate-600">{a.especialidad}</p>
                                                 </div>
                                                 {selectedAbogado?.id === a.id && (
-                                                    <CheckCircle className="w-5 h-5 text-olive-600" />
+                                                    <Check className="w-5 h-5 text-olive-600" />
                                                 )}
                                             </button>
                                         ))}
@@ -364,7 +491,6 @@ const BookingWizard = ({ onClose }) => {
                         {/* Step 2: Fecha y Hora */}
                         {step === 2 && (
                             <div className="space-y-6">
-                                {/* Resumen */}
                                 <div className="bg-olive-50 border border-olive-200 rounded-xl p-4">
                                     <div className="flex items-start gap-3">
                                         <div className="w-10 h-10 bg-olive-600 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -401,50 +527,62 @@ const BookingWizard = ({ onClose }) => {
                                     </p>
                                 </div>
 
-                                {selectedDate && horarios.length > 0 && (
-                                    <>
-                                        {/* NUEVO: Mensaje si el día está bloqueado */}
-                                        {error && (
-                                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                                                <div className="flex items-center gap-2">
-                                                    <Ban className="w-5 h-5 text-red-600" />
-                                                    <p className="text-red-700 text-sm font-medium">{error}</p>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Mostrar horarios solo si NO está bloqueado */}
-                                        {!error && (
+                                {selectedDate && fechaBloqueada && (
+                                    <div className="bg-red-50 border-2 border-red-300 rounded-xl p-5">
+                                        <div className="flex items-start gap-3">
+                                            <Ban className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
                                             <div>
-                                                <label className="block text-slate-900 font-semibold mb-3">
-                                                    Horario disponible <span className="text-red-500">*</span>
-                                                </label>
-                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                                    {horarios.map(horario => {
-                                                        const disponible = isHoraDisponible(horario);
-                                                        return (
-                                                            <button
-                                                                key={horario}
-                                                                onClick={() => disponible && setSelectedTime(horario)}
-                                                                disabled={!disponible}
-                                                                className={`p-3 border-2 rounded-lg font-semibold transition-all text-sm ${selectedTime === horario
-                                                                    ? 'border-olive-600 bg-olive-600 text-white'
-                                                                    : disponible
-                                                                        ? 'border-slate-200 hover:border-olive-300 text-slate-700'
-                                                                        : 'border-slate-100 bg-slate-100 text-slate-400 cursor-not-allowed line-through'
-                                                                    }`}
-                                                            >
-                                                                {horario}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                                <p className="text-xs text-slate-500 mt-3">
-                                                    * Los bloques incluyen 30 minutos de consulta
+                                                <h4 className="font-bold text-red-900 mb-1">Fecha no disponible</h4>
+                                                <p className="text-sm text-red-700">
+                                                    El {formatearFechaChilena(selectedDate)} no está disponible para agendar.
+                                                    {bloqueos.find(b => b.fecha_inicio.split('T')[0] === selectedDate)?.motivo && (
+                                                        <span className="block mt-1 font-medium">
+                                                            Motivo: {bloqueos.find(b => b.fecha_inicio.split('T')[0] === selectedDate).motivo}
+                                                        </span>
+                                                    )}
                                                 </p>
+                                                <p className="text-xs text-red-600 mt-2">Por favor selecciona otra fecha.</p>
                                             </div>
-                                        )}
-                                    </>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedDate && horarios.length > 0 && !fechaBloqueada && (
+                                    <div>
+                                        <label className="block text-slate-900 font-semibold mb-3">
+                                            Horario disponible <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                            {horarios.map(horario => {
+                                                const disponible = isHoraDisponible(horario);
+                                                const bloqueada = isHoraBloqueada(horario);
+
+                                                return (
+                                                    <button
+                                                        key={horario}
+                                                        onClick={() => disponible && setSelectedTime(horario)}
+                                                        disabled={!disponible}
+                                                        className={`p-3 border-2 rounded-lg font-semibold transition-all text-sm relative ${selectedTime === horario
+                                                            ? 'border-olive-600 bg-olive-600 text-white'
+                                                            : bloqueada
+                                                                ? 'border-red-200 bg-red-50 text-red-400 cursor-not-allowed'
+                                                                : disponible
+                                                                    ? 'border-slate-200 hover:border-olive-300 text-slate-700'
+                                                                    : 'border-slate-100 bg-slate-100 text-slate-400 cursor-not-allowed line-through'
+                                                            }`}
+                                                    >
+                                                        {bloqueada && (
+                                                            <Ban className="w-3 h-3 absolute top-1 right-1 text-red-500" />
+                                                        )}
+                                                        {horario}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        <p className="text-xs text-slate-500 mt-3">
+                                            * Los bloques incluyen 30 minutos de consulta
+                                        </p>
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -452,7 +590,6 @@ const BookingWizard = ({ onClose }) => {
                         {/* Step 3: Información */}
                         {step === 3 && (
                             <div className="space-y-6">
-                                {/* Resumen Final */}
                                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
                                     <h4 className="font-bold text-slate-900 mb-3">Resumen de tu cita</h4>
                                     <div className="space-y-2 text-sm">
@@ -492,10 +629,20 @@ const BookingWizard = ({ onClose }) => {
                                         <input
                                             type="text"
                                             value={formData.nombre}
-                                            onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                                            className="w-full p-3 border-2 border-slate-300 rounded-lg focus:border-olive-600 focus:ring-4 focus:ring-olive-100 outline-none transition-all"
+                                            onChange={(e) => handleNombreChange(e.target.value)}
+                                            onBlur={() => setFormErrors({ ...formErrors, nombre: validateNombre(formData.nombre) })}
+                                            className={`w-full p-3 border-2 rounded-lg focus:ring-4 outline-none transition-all ${formErrors.nombre
+                                                ? 'border-red-300 focus:border-red-500 focus:ring-red-100'
+                                                : 'border-slate-300 focus:border-olive-600 focus:ring-olive-100'
+                                                }`}
                                             placeholder="Juan Pérez"
                                         />
+                                        {formErrors.nombre && (
+                                            <div className="flex items-center gap-1 mt-1 text-red-600 text-xs">
+                                                <AlertCircle className="w-3 h-3" />
+                                                <span>{formErrors.nombre}</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div>
@@ -506,10 +653,20 @@ const BookingWizard = ({ onClose }) => {
                                         <input
                                             type="email"
                                             value={formData.email}
-                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                            className="w-full p-3 border-2 border-slate-300 rounded-lg focus:border-olive-600 focus:ring-4 focus:ring-olive-100 outline-none transition-all"
+                                            onChange={(e) => handleEmailChange(e.target.value)}
+                                            onBlur={() => setFormErrors({ ...formErrors, email: validateEmail(formData.email) })}
+                                            className={`w-full p-3 border-2 rounded-lg focus:ring-4 outline-none transition-all ${formErrors.email
+                                                ? 'border-red-300 focus:border-red-500 focus:ring-red-100'
+                                                : 'border-slate-300 focus:border-olive-600 focus:ring-olive-100'
+                                                }`}
                                             placeholder="juan@email.com"
                                         />
+                                        {formErrors.email && (
+                                            <div className="flex items-center gap-1 mt-1 text-red-600 text-xs">
+                                                <AlertCircle className="w-3 h-3" />
+                                                <span>{formErrors.email}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -521,10 +678,20 @@ const BookingWizard = ({ onClose }) => {
                                     <input
                                         type="tel"
                                         value={formData.telefono}
-                                        onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                                        className="w-full p-3 border-2 border-slate-300 rounded-lg focus:border-olive-600 focus:ring-4 focus:ring-olive-100 outline-none transition-all"
+                                        onChange={(e) => handleTelefonoChange(e.target.value)}
+                                        onBlur={() => setFormErrors({ ...formErrors, telefono: validateTelefono(formData.telefono) })}
+                                        className={`w-full p-3 border-2 rounded-lg focus:ring-4 outline-none transition-all ${formErrors.telefono
+                                            ? 'border-red-300 focus:border-red-500 focus:ring-red-100'
+                                            : 'border-slate-300 focus:border-olive-600 focus:ring-olive-100'
+                                            }`}
                                         placeholder="+56 9 1234 5678"
                                     />
+                                    {formErrors.telefono && (
+                                        <div className="flex items-center gap-1 mt-1 text-red-600 text-xs">
+                                            <AlertCircle className="w-3 h-3" />
+                                            <span>{formErrors.telefono}</span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div>
@@ -544,7 +711,6 @@ const BookingWizard = ({ onClose }) => {
                         )}
                     </div>
 
-                    {/* Footer with buttons */}
                     <div className="border-t border-slate-200 p-6 md:p-8 bg-slate-50">
                         <div className="flex gap-3">
                             {step > 1 && (
@@ -572,7 +738,7 @@ const BookingWizard = ({ onClose }) => {
                             ) : (
                                 <button
                                     onClick={handleSubmit}
-                                    disabled={!formData.nombre || !formData.email || !formData.telefono || loading}
+                                    disabled={loading}
                                     className="flex-1 px-6 py-3 bg-olive-600 text-white rounded-lg font-semibold hover:bg-olive-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                                 >
                                     {loading ? (
@@ -582,7 +748,7 @@ const BookingWizard = ({ onClose }) => {
                                         </>
                                     ) : (
                                         <>
-                                            <CheckCircle className="w-5 h-5" />
+                                            <Check className="w-5 h-5" />
                                             Confirmar Cita
                                         </>
                                     )}

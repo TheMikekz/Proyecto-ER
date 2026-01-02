@@ -51,6 +51,17 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, activeView, setActiveView, handl
                 </button>
 
                 <button
+                    onClick={() => setActiveView('calendario')}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeView === 'calendario'
+                        ? 'bg-olive-600 text-white'
+                        : 'text-white hover:bg-olive-600'
+                        }`}
+                >
+                    <Calendar className="w-5 h-5 flex-shrink-0" />
+                    {sidebarOpen && <span className="font-medium text-sm">Calendario</span>}
+                </button>
+
+                <button
                     onClick={() => setActiveView('agenda')}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeView === 'agenda'
                         ? 'bg-olive-600 text-white'

@@ -60,3 +60,95 @@
     animation-delay: 1s;
   }
 }
+
+* Estilos personalizados para react-big-calendar */
+.rbc-calendar {
+  font-family: inherit;
+}
+
+.rbc-header {
+  padding: 12px 8px;
+  font-weight: 600;
+  color: #334155;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.rbc-today {
+  background-color: #fef3c7 !important;
+}
+
+.rbc-off-range-bg {
+  background: #f9fafb;
+}
+
+.rbc-event {
+  padding: 2px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.rbc-event:focus {
+  outline: 2px solid #6b7c3d;
+}
+
+.rbc-toolbar {
+  padding: 15px 10px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rbc-toolbar button {
+  color: #475569;
+  padding: 8px 16px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.rbc-toolbar button:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.rbc-toolbar button.rbc-active {
+  background: #6b7c3d;
+  color: white;
+  border-color: #6b7c3d;
+}
+
+.rbc-toolbar button:focus {
+  outline: 2px solid #6b7c3d;
+  outline-offset: 2px;
+}
+
+.rbc-month-view {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rbc-time-view {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rbc-time-header {
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.rbc-time-content {
+  border-top: none;
+}
+
+.rbc-current-time-indicator {
+  background-color: #dc2626;
+  height: 2px;
+}

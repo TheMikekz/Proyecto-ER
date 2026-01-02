@@ -1,5 +1,4 @@
-// src/components/admin/CitasView.jsx
-import { Search, Calendar, Clock, Mail, Phone, FileText, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, Calendar, Clock, Mail, Phone, FileText, CheckCircle, XCircle, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 
 const CitasView = ({
     searchTerm,
@@ -13,26 +12,39 @@ const CitasView = ({
 }) => {
 
     const getEstadoBadge = (estado) => {
-        const badges = {
-            pendiente: { bg: 'bg-amber-100', text: 'text-amber-700', icon: AlertCircle },
-            confirmado: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle },
-            cancelado: { bg: 'bg-red-100', text: 'text-red-700', icon: XCircle }
+        const estilos = {
+            pendiente: 'bg-blue-100 text-blue-700',
+            confirmado: 'bg-green-100 text-green-700',
+            cancelado: 'bg-red-100 text-red-700',
+            requiere_reagendamiento: 'bg-amber-100 text-amber-700 border-2 border-amber-300'
         };
-        const badge = badges[estado] || badges.pendiente;
-        const Icon = badge.icon;
+
+        const textos = {
+            pendiente: 'Pendiente',
+            confirmado: 'Confirmado',
+            cancelado: 'Cancelado',
+            requiere_reagendamiento: '⚠️ Reagendar'
+        };
+
         return (
-            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${badge.bg} ${badge.text}`}>
-                <Icon className="w-3.5 h-3.5" />
-                <span className="text-xs font-semibold capitalize">{estado}</span>
-            </div>
+            <span className={`px-4 py-1 rounded-md text-sm font-semibold ${estilos[estado]}`}>
+                {textos[estado]}
+            </span>
         );
+    };
+
+    const statusLabels = {
+        todos: 'Todos',
+        pendiente: 'Pendiente',
+        confirmado: 'Confirmado',
+        cancelado: 'Cancelado',
+        requiere_reagendamiento: 'Reagendar'
     };
 
     const capitalize = (text) => {
         if (!text) return '';
         return text.charAt(0).toUpperCase() + text.slice(1);
     };
-
 
     return (
         <div className="space-y-6">
@@ -50,7 +62,7 @@ const CitasView = ({
                         />
                     </div>
                     <div className="flex gap-2">
-                        {['todos', 'pendiente', 'confirmado', 'cancelado'].map(status => (
+                        {['todos', 'pendiente', 'confirmado', 'cancelado', 'requiere_reagendamiento'].map(status => (
                             <button
                                 key={status}
                                 onClick={() => setFilterStatus(status)}
@@ -59,7 +71,7 @@ const CitasView = ({
                                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                     }`}
                             >
-                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                                {statusLabels[status]}
                             </button>
                         ))}
                     </div>
@@ -99,18 +111,14 @@ const CitasView = ({
                                     <div className="flex items-center gap-2 text-slate-700">
                                         <Calendar className="w-4 h-4 text-slate-400" />
                                         <span className="text-sm">
-                                            <span className="text-sm">
-                                                {capitalize(
-                                                    new Date(ag.fecha).toLocaleDateString('es-CL', {
-                                                        weekday: 'long',
-                                                        day: 'numeric',
-                                                        month: 'long',
-                                                        year: 'numeric',
-                                                    })
-                                                )}
-                                            </span>
-
-
+                                            {capitalize(
+                                                new Date(ag.fecha).toLocaleDateString('es-CL', {
+                                                    weekday: 'long',
+                                                    day: 'numeric',
+                                                    month: 'long',
+                                                    year: 'numeric',
+                                                })
+                                            )}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2 text-slate-700">
@@ -155,7 +163,7 @@ const CitasView = ({
                                         <button
                                             onClick={() => handleUpdateEstado(ag.id, 'pendiente')}
                                             disabled={updatingId === ag.id}
-                                            className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all text-sm font-medium disabled:opacity-50"
+                                            className="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-all text-sm font-medium disabled:opacity-50"
                                         >
                                             {updatingId === ag.id ? (
                                                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -177,6 +185,20 @@ const CitasView = ({
                                                 <XCircle className="w-4 h-4" />
                                             )}
                                             Cancelar
+                                        </button>
+                                    )}
+                                    {ag.estado !== 'requiere_reagendamiento' && (
+                                        <button
+                                            onClick={() => handleUpdateEstado(ag.id, 'requiere_reagendamiento')}
+                                            disabled={updatingId === ag.id}
+                                            className="flex items-center gap-2 px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded-lg transition-all text-sm font-medium disabled:opacity-50"
+                                        >
+                                            {updatingId === ag.id ? (
+                                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <AlertTriangle className="w-4 h-4" />
+                                            )}
+                                            Reagendar
                                         </button>
                                     )}
                                 </div>

@@ -12,6 +12,7 @@ import DashboardView from '../components/admin/DashboardView';
 import CitasView from '../components/admin/CitasView';
 import BloqueosView from '../components/admin/BloqueosView';
 import BlockModal from '../components/admin/BlockModal';
+import CalendarView from '../components/admin/CalendarView';
 
 const Admin = () => {
     const { user, logout, loading: authLoading } = useAuth();
@@ -40,6 +41,9 @@ const Admin = () => {
         motivo: '',
         tipo: 'dia_completo'
     });
+
+    const [citasAfectadas, setCitasAfectadas] = useState([]);
+    const [showConflictWarning, setShowConflictWarning] = useState(false);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -93,21 +97,68 @@ const Admin = () => {
         }
     };
 
-    const handleCreateBloqueo = async () => {
+    const verificarConflictos = async () => {
         try {
-            // Validar campos requeridos
             if (!blockForm.abogado_id || !blockForm.fecha) {
                 alert('Por favor completa los campos requeridos');
                 return;
             }
 
-            // Validar horas si es tipo horas_especificas
-            if (blockForm.tipo === 'horas_especificas' && (!blockForm.hora_inicio || !blockForm.hora_fin)) {
-                alert('Por favor completa las horas de inicio y fin');
-                return;
+            // Buscar citas que se verían afectadas
+            let citasEnRiesgo = agendamientos.filter(cita => {
+                // Solo citas no canceladas
+                if (cita.estado === 'cancelado') return false;
+
+                // Mismo abogado y misma fecha
+                if (cita.abogado_id !== parseInt(blockForm.abogado_id)) return false;
+                if (cita.fecha !== blockForm.fecha) return false;
+
+                // Si es día completo, todas las citas están en riesgo
+                if (blockForm.tipo === 'dia_completo') return true;
+
+                // Si es horas específicas, verificar si la cita cae en el rango
+                if (blockForm.tipo === 'horas_especificas' && blockForm.hora_inicio && blockForm.hora_fin) {
+                    const horaCita = cita.hora.substring(0, 5);
+                    return horaCita >= blockForm.hora_inicio.substring(0, 5) &&
+                        horaCita < blockForm.hora_fin.substring(0, 5);
+                }
+
+                return false;
+            });
+
+            setCitasAfectadas(citasEnRiesgo);
+
+            if (citasEnRiesgo.length > 0) {
+                setShowConflictWarning(true);
+            } else {
+                // No hay conflictos, crear directamente
+                await ejecutarCreacionBloqueo();
             }
 
+        } catch (error) {
+            console.error('Error al verificar conflictos:', error);
+            alert('Error al verificar conflictos');
+        }
+    };
+
+    const ejecutarCreacionBloqueo = async () => {
+        try {
+            // 1. Crear el bloqueo
             await createBloqueo(blockForm);
+
+            // 2. Si hay citas afectadas, marcarlas para reagendar
+            if (citasAfectadas.length > 0) {
+                for (const cita of citasAfectadas) {
+                    await updateAgendamiento(cita.id, {
+                        estado: 'requiere_reagendamiento',
+                        comentarios: `${cita.comentarios || ''} [BLOQUEO: ${blockForm.motivo || 'Fecha bloqueada'}]`.trim()
+                    });
+                }
+
+                alert(`Bloqueo creado. ${citasAfectadas.length} cita(s) marcadas para reagendamiento. Por favor contacta a los clientes.`);
+            }
+
+            // 3. Limpiar y recargar
             setShowBlockModal(false);
             setBlockForm({
                 abogado_id: '',
@@ -117,10 +168,23 @@ const Admin = () => {
                 motivo: '',
                 tipo: 'dia_completo'
             });
+            setCitasAfectadas([]);
+            setShowConflictWarning(false);
             await fetchAllData();
+
         } catch (error) {
             console.error('Error al crear bloqueo:', error);
             alert('Error al crear el bloqueo: ' + (error.response?.data?.error || error.message));
+        }
+    };
+
+    const handleCreateBloqueo = async () => {
+        if (showConflictWarning && citasAfectadas.length > 0) {
+            // Si ya mostramos la advertencia, el usuario confirmó
+            await ejecutarCreacionBloqueo();
+        } else {
+            // Primera vez, verificar conflictos
+            await verificarConflictos();
         }
     };
 
@@ -235,6 +299,14 @@ const Admin = () => {
                             sortedAgendamientos={sortedAgendamientos}
                             updatingId={updatingId}
                             handleUpdateEstado={handleUpdateEstado}
+                        />
+                    )}
+
+                    {activeView === 'calendario' && (
+                        <CalendarView
+                            agendamientos={agendamientos}
+                            loading={loading}
+                            onSelectEvent={fetchAllData}
                         />
                     )}
 

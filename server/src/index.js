@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+const googleCalendarService = require("./services/googleCalendarService");
 
 const app = express();
 
@@ -21,6 +22,35 @@ app.use("/api/servicios", serviciosRoutes);
 app.use("/api/abogados", abogadosRoutes);
 app.use("/api/agendamientos", agendamientosRoutes);
 app.use("/api/bloqueos", bloqueosRoutes);
+
+// ================================
+// Google Calendar OAuth (SOLO 1 VEZ)
+// ================================
+
+// Iniciar autenticación con Google
+app.get("/api/google/auth", (req, res) => {
+  const url = googleCalendarService.getAuthUrl();
+  res.redirect(url);
+});
+
+// Callback de Google OAuth
+app.get("/api/google/callback", async (req, res) => {
+  const code = req.query.code;
+
+  if (!code) {
+    return res.status(400).send("No se recibió el código de Google");
+  }
+
+  try {
+    await googleCalendarService.getTokensFromCode(code);
+    res.send(
+      "✅ Google Calendar conectado correctamente. Ya puedes cerrar esta ventana."
+    );
+  } catch (error) {
+    console.error("❌ Error OAuth Google:", error);
+    res.status(500).send("Error al conectar Google Calendar");
+  }
+});
 
 // Ruta de prueba
 app.get("/api/test", (req, res) => {
