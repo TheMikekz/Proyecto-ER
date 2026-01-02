@@ -152,3 +152,20 @@
   background-color: #dc2626;
   height: 2px;
 }
+
+/* Estilos adicionales para MUI DatePicker */
+.MuiPickersDay-root.Mui-selected {
+    background-color: #65a30d !important;
+}
+
+.MuiPickersDay-root:hover {
+    background-color: #f0fdf4 !important;
+}
+
+.MuiPickersCalendarHeader-root {
+    padding: 1rem;
+}
+
+.MuiDayCalendar-header {
+    justify-content: space-around;
+}

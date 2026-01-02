@@ -112,7 +112,7 @@ const CitasView = ({
                                         <Calendar className="w-4 h-4 text-slate-400" />
                                         <span className="text-sm">
                                             {capitalize(
-                                                new Date(ag.fecha).toLocaleDateString('es-CL', {
+                                                new Date(ag.fecha + 'T00:00:00').toLocaleDateString('es-CL', {
                                                     weekday: 'long',
                                                     day: 'numeric',
                                                     month: 'long',

@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import { getServicios, getAbogados, checkDisponibilidad, createAgendamiento } from '../../utils/api';
 import { X, Check, CheckCircle, Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronRight, ChevronLeft, Scale, Ban, AlertCircle } from 'lucide-react';
 
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+import 'dayjs/locale/es';
+
+dayjs.locale('es');
+
 const BookingWizard = ({ onClose }) => {
     const [step, setStep] = useState(1);
     const [servicios, setServicios] = useState([]);
@@ -508,21 +516,69 @@ const BookingWizard = ({ onClose }) => {
                                     <label className="block text-slate-900 font-semibold mb-3">
                                         Fecha <span className="text-red-500">*</span>
                                     </label>
-                                    <input
-                                        type="date"
-                                        value={selectedDate}
-                                        onChange={(e) => {
-                                            if (isFechaValida(e.target.value)) {
-                                                setSelectedDate(e.target.value);
-                                                setSelectedTime('');
-                                            } else {
-                                                alert('Los domingos no hay atención. Por favor selecciona otro día.');
-                                            }
-                                        }}
-                                        min={new Date().toISOString().split('T')[0]}
-                                        className="w-full p-4 border-2 border-slate-300 rounded-xl focus:border-olive-600 focus:ring-4 focus:ring-olive-100 outline-none transition-all"
-                                    />
+                                    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+                                        <DatePicker
+                                            value={selectedDate ? dayjs(selectedDate) : null}
+                                            onChange={(newValue) => {
+                                                if (newValue) {
+                                                    const formattedDate = newValue.format('YYYY-MM-DD');
+                                                    if (isFechaValida(formattedDate)) {
+                                                        setSelectedDate(formattedDate);
+                                                        setSelectedTime('');
+                                                    } else {
+                                                        alert('Los domingos no hay atención. Por favor selecciona otro día.');
+                                                    }
+                                                }
+                                            }}
+                                            minDate={dayjs().add(1, 'day')}
+                                            shouldDisableDate={(date) => date.day() === 0}
+                                            format="DD/MM/YYYY"
+                                            slotProps={{
+                                                textField: {
+                                                    fullWidth: true,
+                                                    placeholder: 'Selecciona una fecha',
+                                                    sx: {
+                                                        '& .MuiOutlinedInput-root': {
+                                                            borderRadius: '0.75rem',
+                                                            padding: '0.5rem',
+                                                            '& fieldset': {
+                                                                borderColor: '#cbd5e1',
+                                                                borderWidth: '2px',
+                                                            },
+                                                            '&:hover fieldset': {
+                                                                borderColor: '#65a30d',
+                                                            },
+                                                            '&.Mui-focused fieldset': {
+                                                                borderColor: '#65a30d',
+                                                                borderWidth: '2px',
+                                                            },
+                                                        },
+                                                        '& .MuiInputBase-input': {
+                                                            padding: '0.75rem',
+                                                            fontSize: '1rem',
+                                                        },
+                                                    },
+                                                },
+                                                day: {
+                                                    sx: {
+                                                        '&.Mui-selected': {
+                                                            backgroundColor: '#65a30d !important',
+                                                            '&:hover': {
+                                                                backgroundColor: '#4d7c0f !important',
+                                                            },
+                                                        },
+                                                        '&:hover': {
+                                                            backgroundColor: '#f0fdf4',
+                                                        },
+                                                    },
+                                                },
+                                            }}
+                                        />
+                                    </LocalizationProvider>
                                     <p className="text-xs text-slate-500 mt-2">
+                                        * Las citas deben agendarse con al menos 1 día de anticipación
+                                    </p>
+                                    <p className="text-xs text-slate-500">
                                         * Atención: Lun-Vie 9:30-19:00 | Sáb 9:30-12:00 | Dom cerrado
                                     </p>
                                 </div>
