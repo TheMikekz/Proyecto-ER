@@ -537,38 +537,101 @@ const BookingWizard = ({ onClose }) => {
                                                 textField: {
                                                     fullWidth: true,
                                                     placeholder: 'Selecciona una fecha',
+                                                    onClick: (e) => {
+                                                        e.currentTarget.querySelector('button')?.click();
+                                                    },
                                                     sx: {
                                                         '& .MuiOutlinedInput-root': {
                                                             borderRadius: '0.75rem',
                                                             padding: '0.5rem',
+                                                            cursor: 'pointer',
                                                             '& fieldset': {
                                                                 borderColor: '#cbd5e1',
                                                                 borderWidth: '2px',
                                                             },
                                                             '&:hover fieldset': {
-                                                                borderColor: '#65a30d',
+                                                                borderColor: '#7e8c54',
                                                             },
                                                             '&.Mui-focused fieldset': {
-                                                                borderColor: '#65a30d',
+                                                                borderColor: '#636f41',
                                                                 borderWidth: '2px',
                                                             },
                                                         },
                                                         '& .MuiInputBase-input': {
                                                             padding: '0.75rem',
                                                             fontSize: '1rem',
+                                                            cursor: 'pointer',
                                                         },
                                                     },
                                                 },
                                                 day: {
                                                     sx: {
                                                         '&.Mui-selected': {
-                                                            backgroundColor: '#65a30d !important',
+                                                            backgroundColor: '#636f41 !important',
+                                                            color: '#ffffff',
+                                                            fontWeight: 600,
                                                             '&:hover': {
-                                                                backgroundColor: '#4d7c0f !important',
+                                                                backgroundColor: '#4d5635 !important',
+                                                            },
+                                                            '&:focus': {
+                                                                backgroundColor: '#636f41 !important',
                                                             },
                                                         },
-                                                        '&:hover': {
-                                                            backgroundColor: '#f0fdf4',
+                                                        '&:not(.Mui-selected)': {
+                                                            '&:hover': {
+                                                                backgroundColor: '#b7c195',
+                                                                color: '#373d2a',
+                                                            },
+                                                        },
+                                                        '&.MuiPickersDay-today': {
+                                                            borderColor: '#7e8c54',
+                                                            '&:not(.Mui-selected)': {
+                                                                borderColor: '#7e8c54',
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                                calendarHeader: {
+                                                    sx: {
+                                                        '& .MuiPickersCalendarHeader-switchViewButton': {
+                                                            color: '#636f41',
+                                                            '&:hover': {
+                                                                backgroundColor: '#b7c195',
+                                                            },
+                                                        },
+                                                        '& .MuiPickersArrowSwitcher-button': {
+                                                            color: '#636f41',
+                                                            '&:hover': {
+                                                                backgroundColor: '#b7c195',
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                                layout: {
+                                                    sx: {
+                                                        '& .MuiPickersYear-yearButton': {
+                                                            '&.Mui-selected': {
+                                                                backgroundColor: '#636f41 !important',
+                                                                color: '#ffffff',
+                                                                '&:hover': {
+                                                                    backgroundColor: '#4d5635 !important',
+                                                                },
+                                                            },
+                                                            '&:hover': {
+                                                                backgroundColor: '#b7c195',
+                                                            },
+                                                        },
+                                                        '& .MuiPickersMonth-monthButton': {
+                                                            '&.Mui-selected': {
+                                                                backgroundColor: '#636f41 !important',
+                                                                color: '#ffffff',
+                                                                '&:hover': {
+                                                                    backgroundColor: '#4d5635 !important',
+                                                                },
+                                                            },
+                                                            '&:hover': {
+                                                                backgroundColor: '#b7c195',
+                                                            },
                                                         },
                                                     },
                                                 },

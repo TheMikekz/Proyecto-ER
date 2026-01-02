@@ -153,19 +153,59 @@
   height: 2px;
 }
 
-/* Estilos adicionales para MUI DatePicker */
+/* En tu archivo CSS principal (index.css o App.css) - Agrega al final: */
+
+/* Estilos MUI DatePicker - Tema Olive */
 .MuiPickersDay-root.Mui-selected {
-    background-color: #65a30d !important;
+    background-color: #636f41 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
 }
 
-.MuiPickersDay-root:hover {
-    background-color: #f0fdf4 !important;
+.MuiPickersDay-root.Mui-selected:hover,
+.MuiPickersDay-root.Mui-selected:focus {
+    background-color: #4d5635 !important;
 }
 
-.MuiPickersCalendarHeader-root {
-    padding: 1rem;
+.MuiPickersDay-root:not(.Mui-selected):hover {
+    background-color: #b7c195 !important;
+    color: #373d2a !important;
 }
 
-.MuiDayCalendar-header {
-    justify-content: space-around;
+.MuiPickersDay-root.MuiPickersDay-today:not(.Mui-selected) {
+    border-color: #7e8c54 !important;
+}
+
+.MuiPickersCalendarHeader-switchViewButton,
+.MuiPickersArrowSwitcher-button {
+    color: #636f41 !important;
+}
+
+.MuiPickersCalendarHeader-switchViewButton:hover,
+.MuiPickersArrowSwitcher-button:hover {
+    background-color: #b7c195 !important;
+}
+
+.MuiPickersYear-yearButton.Mui-selected,
+.MuiPickersMonth-monthButton.Mui-selected {
+    background-color: #636f41 !important;
+    color: #ffffff !important;
+}
+
+.MuiPickersYear-yearButton.Mui-selected:hover,
+.MuiPickersMonth-monthButton.Mui-selected:hover {
+    background-color: #4d5635 !important;
+}
+
+.MuiPickersYear-yearButton:hover,
+.MuiPickersMonth-monthButton:hover {
+    background-color: #b7c195 !important;
+}
+
+.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+    border-color: #7e8c54 !important;
+}
+
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-color: #636f41 !important;
 }
